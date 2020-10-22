@@ -27,18 +27,36 @@ func ColumnPrintToPDF(aid int, filename string, cookies map[string]string) error
 	defer cancel()
 
 	// create a timeout
-	ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
+
+	/**
+	var iconfont = document.querySelector('.iconfont');
+	if(iconfont&& iconfont.parentElement&& iconfont.parentElement.parentElement){
+	    iconfont.parentElement.parentElement.style.display='none';
+	}
+	var bottom = document.querySelector('.bottom-wrapper');
+	if(bottom){
+	    bottom.parentElement.style.display='none'
+	}
+	// <!--网页可能存在折叠，迭代调用打开折叠的按钮-->
+	[...document.querySelectorAll('ul>li>div>div>div:nth-child(2)>span')].map(e=>e.click());
+	 */
 
 	err := chromedp.Run(ctx,
 		chromedp.Tasks{
+			// 以 IPhone7 模拟设备浏览。
 			chromedp.Emulate(device.IPhone7),
 			enableLifeCycleEvents(),
 			setCookies(cookies),
 			navigateAndWaitFor(`https://time.geekbang.org/column/article/`+strconv.Itoa(aid), "networkIdle"),
 			chromedp.ActionFunc(func(ctx context.Context) error {
 				s := `
-					document.querySelector('.iconfont').parentElement.parentElement.style.display='none';
+					var iconfont = document.querySelector('.iconfont');
+					if(iconfont&& iconfont.parentElement&& iconfont.parentElement.parentElement){
+						iconfont.parentElement.parentElement.style.display='none';
+					}
+					
 					var bottom = document.querySelector('.bottom-wrapper');
 					if(bottom){
 						bottom.parentElement.style.display='none'
@@ -57,14 +75,19 @@ func ColumnPrintToPDF(aid int, filename string, cookies map[string]string) error
 				return nil
 			}),
 			chromedp.ActionFunc(func(ctx context.Context) error {
+				// 移除头部极客时间 Logo 标题
+				//s := `
+				//	var divs = document.getElementsByTagName('div');
+				//	for (var i = 0; i < divs.length; ++i){
+				//		if(divs[i].innerText === "打开APP"){
+				//			divs[i].parentNode.parentNode.style.display="none";
+				//			break;
+				//		}
+				//	}
+				//`
 				s := `
-					var divs = document.getElementsByTagName('div');
-					for (var i = 0; i < divs.length; ++i){
-						if(divs[i].innerText === "打开APP"){
-							divs[i].parentNode.parentNode.style.display="none";
-							break;
-						}
-					}
+					document.querySelector(".shim") && (document.querySelector(".shim").style.display="none");
+					document.querySelector(".main") && (document.querySelector(".main").style.display="none");
 				`
 				_, exp, err := runtime.Evaluate(s).Do(ctx)
 				if err != nil {
